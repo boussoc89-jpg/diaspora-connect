@@ -2,12 +2,16 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
+import Projets from './pages/Projets';
+import Partenaires from './pages/Partenaires';
+import Financements from './pages/Financements';
+import Layout from './components/Layout';
 
 // Route protégée
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
   if (loading) return <div className="min-h-screen flex items-center justify-center">Chargement...</div>;
-  return user ? children : <Navigate to="/login" />;
+  return user ? <Layout>{children}</Layout> : <Navigate to="/login" />;
 };
 
 function App() {
@@ -19,6 +23,21 @@ function App() {
           <Route path="/dashboard" element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          } />
+          <Route path="/projets" element={
+            <ProtectedRoute>
+              <Projets />
+            </ProtectedRoute>
+          } />
+          <Route path="/partenaires" element={
+            <ProtectedRoute>
+              <Partenaires />
+            </ProtectedRoute>
+          } />
+          <Route path="/financements" element={
+            <ProtectedRoute>
+              <Financements />
             </ProtectedRoute>
           } />
           <Route path="*" element={<Navigate to="/login" />} />
