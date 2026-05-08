@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { projetService } from '../services/api';
+import { projetService, exportService } from '../services/api';
 
 const Projets = () => {
   const [projets, setProjets] = useState([]);
@@ -66,6 +66,36 @@ const Projets = () => {
     }
   };
 
+  const handleExportPDF = async (id) => {
+    try {
+      const res = await exportService.exportProjetPDF(id);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `projet-${id}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError('Erreur lors de l export PDF.');
+    }
+  };
+
+  const handleExportExcel = async () => {
+    try {
+      const res = await exportService.exportProjetsExcel();
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'projets.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError('Erreur lors de l export Excel.');
+    }
+  };
+
   const getStatutColor = (statut) => {
     const colors = {
       'Identifié': 'bg-gray-100 text-gray-700',
@@ -82,60 +112,55 @@ const Projets = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Gestion des Projets</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          {showForm ? 'Annuler' : '+ Nouveau Projet'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={handleExportExcel}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+          >
+            📥 Export Excel
+          </button>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+          >
+            {showForm ? 'Annuler' : '+ Nouveau Projet'}
+          </button>
+        </div>
       </div>
 
-      {/* Messages */}
       {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4">{success}</div>}
 
-      {/* Formulaire */}
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Nouveau Projet</h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Titre</label>
-              <input
-                type="text"
-                value={form.titre}
+              <input type="text" value={form.titre}
                 onChange={(e) => setForm({...form, titre: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              />
+                required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Village</label>
-              <input
-                type="text"
-                value={form.village}
+              <input type="text" value={form.village}
                 onChange={(e) => setForm({...form, village: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              />
+                required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Région</label>
-              <input
-                type="text"
-                value={form.region}
+              <input type="text" value={form.region}
                 onChange={(e) => setForm({...form, region: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              />
+                required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Type de besoin</label>
-              <select
-                value={form.type_besoin}
+              <select value={form.type_besoin}
                 onChange={(e) => setForm({...form, type_besoin: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              >
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500">
                 <option value="eau">Eau</option>
                 <option value="éducation">Éducation</option>
                 <option value="santé">Santé</option>
@@ -145,31 +170,23 @@ const Projets = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Budget estimé (€)</label>
-              <input
-                type="number"
-                value={form.budget_estime}
+              <input type="number" value={form.budget_estime}
                 onChange={(e) => setForm({...form, budget_estime: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              />
+                required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre de bénéficiaires</label>
-              <input
-                type="number"
-                value={form.nb_beneficiaires}
+              <input type="number" value={form.nb_beneficiaires}
                 onChange={(e) => setForm({...form, nb_beneficiaires: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              />
+                required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Priorité</label>
-              <select
-                value={form.priorite}
+              <select value={form.priorite}
                 onChange={(e) => setForm({...form, priorite: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              >
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500">
                 <option value="haute">Haute</option>
                 <option value="moyenne">Moyenne</option>
                 <option value="basse">Basse</option>
@@ -177,11 +194,9 @@ const Projets = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-              <select
-                value={form.statut}
+              <select value={form.statut}
                 onChange={(e) => setForm({...form, statut: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              >
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500">
                 <option value="Identifié">Identifié</option>
                 <option value="En recherche de financement">En recherche de financement</option>
                 <option value="Financé">Financé</option>
@@ -192,28 +207,21 @@ const Projets = () => {
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-              <textarea
-                value={form.description}
+              <textarea value={form.description}
                 onChange={(e) => setForm({...form, description: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                rows="3"
-                required
-              />
+                rows="3" required />
             </div>
             <div className="md:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Objectifs</label>
-              <textarea
-                value={form.objectifs}
+              <textarea value={form.objectifs}
                 onChange={(e) => setForm({...form, objectifs: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                rows="2"
-              />
+                rows="2" />
             </div>
             <div className="md:col-span-2">
-              <button
-                type="submit"
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-              >
+              <button type="submit"
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
                 Créer le projet
               </button>
             </div>
@@ -221,7 +229,6 @@ const Projets = () => {
         </div>
       )}
 
-      {/* Liste des projets */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-lg font-bold text-gray-800 mb-4">
           Liste des projets ({projets.length})
@@ -259,12 +266,18 @@ const Projets = () => {
                     </span>
                   </td>
                   <td className="py-3">
-                    <button
-                      onClick={() => handleDelete(projet.id)}
-                      className="text-red-500 hover:text-red-700 text-sm"
-                    >
-                      Supprimer
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleExportPDF(projet.id)}
+                        className="text-blue-500 hover:text-blue-700 text-sm">
+                        PDF
+                      </button>
+                      <button
+                        onClick={() => handleDelete(projet.id)}
+                        className="text-red-500 hover:text-red-700 text-sm">
+                        Supprimer
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}

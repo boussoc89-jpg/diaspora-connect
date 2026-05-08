@@ -6,6 +6,7 @@ const authRoutes = require("./routes/authRoutes");
 const projetRoutes = require("./routes/projetRoutes");
 const partenaireRoutes = require("./routes/partenaireRoutes");
 const financementRoutes = require("./routes/financementRoutes");
+const exportRoutes = require("./routes/exportRoutes");
 
 const app = express();
 
@@ -25,6 +26,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/projets", projetRoutes);
 app.use("/api/partenaires", partenaireRoutes);
 app.use("/api/financements", financementRoutes);
+app.use("/api/export", exportRoutes);
 
 // Route de test
 app.get("/", (req, res) => {

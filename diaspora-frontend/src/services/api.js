@@ -68,5 +68,11 @@ export const financementService = {
   update: (id, data) => api.put(`/financements/${id}`, data),
   delete: (id) => api.delete(`/financements/${id}`),
 };
-
+// Services Export
+export const exportService = {
+  exportProjetPDF: (id) =>
+    api.get(`/export/projet/${id}/pdf`, { responseType: "blob" }),
+  exportProjetsExcel: () =>
+    api.get("/export/projets/excel", { responseType: "blob" }),
+};
 export default api;
