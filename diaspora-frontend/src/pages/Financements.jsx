@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { financementService, projetService, partenaireService } from '../services/api';
-
+import { useAuth } from '../context/AuthContext';
 const Financements = () => {
+    const { user } = useAuth();
   const [financements, setFinancements] = useState([]);
   const [projets, setProjets] = useState([]);
   const [partenaires, setPartenaires] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editingFinancement, setEditingFinancement] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [selectedProjet, setSelectedProjet] = useState('');
@@ -23,9 +25,7 @@ const Financements = () => {
     notes: ''
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+  useEffect(() => { fetchData(); }, []);
 
   const fetchData = async () => {
     try {
@@ -59,10 +59,33 @@ const Financements = () => {
     const projetId = e.target.value;
     setSelectedProjet(projetId);
     if (projetId) fetchFinancements(projetId);
-    else {
-      setFinancements([]);
-      setStats(null);
-    }
+    else { setFinancements([]); setStats(null); }
+  };
+
+  const handleEdit = (financement) => {
+    setEditingFinancement(financement.id);
+    setForm({
+      projet_id: financement.projet_id,
+      partenaire_id: financement.partenaire_id,
+      montant_promis: financement.montant_promis,
+      montant_verse: financement.montant_verse,
+      date_engagement: financement.date_engagement || '',
+      date_versement: financement.date_versement || '',
+      reference: financement.reference || '',
+      statut: financement.statut,
+      notes: financement.notes || ''
+    });
+    setShowForm(true);
+  };
+
+  const handleCancel = () => {
+    setShowForm(false);
+    setEditingFinancement(null);
+    setForm({
+      projet_id: '', partenaire_id: '', montant_promis: '',
+      montant_verse: '0', date_engagement: '', date_versement: '',
+      reference: '', statut: 'Promesse', notes: ''
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -70,17 +93,29 @@ const Financements = () => {
     setError('');
     setSuccess('');
     try {
-      await financementService.create(form);
-      setSuccess('Financement créé avec succès !');
-      setShowForm(false);
-      setForm({
-        projet_id: '', partenaire_id: '', montant_promis: '',
-        montant_verse: '0', date_engagement: '', date_versement: '',
-        reference: '', statut: 'Promesse', notes: ''
-      });
+      if (editingFinancement) {
+        await financementService.update(editingFinancement, form);
+        setSuccess('Financement modifié avec succès !');
+      } else {
+        await financementService.create(form);
+        setSuccess('Financement créé avec succès !');
+      }
+      handleCancel();
       if (selectedProjet) fetchFinancements(selectedProjet);
     } catch (err) {
-      setError(err.response?.data?.message || 'Erreur lors de la création.');
+      setError(err.response?.data?.message || 'Erreur.');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Voulez-vous vraiment supprimer ce financement ?')) {
+      try {
+        await financementService.delete(id);
+        setSuccess('Financement supprimé avec succès !');
+        if (selectedProjet) fetchFinancements(selectedProjet);
+      } catch (err) {
+        setError('Erreur lors de la suppression.');
+      }
     }
   };
 
@@ -104,30 +139,29 @@ const Financements = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Suivi Financier</h1>
-        <button
-          onClick={() => setShowForm(!showForm)}
-          className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
-        >
-          {showForm ? 'Annuler' : '+ Nouveau Financement'}
-        </button>
+        {(user?.role === 'admin' || user?.role === 'membre') && (
+  <button onClick={() => { setEditingFinancement(null); setShowForm(!showForm); }}
+    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+    {showForm ? 'Annuler' : '+ Nouveau Financement'}
+  </button>
+)}
       </div>
 
       {error && <div className="bg-red-100 text-red-700 p-3 rounded-lg mb-4">{error}</div>}
       {success && <div className="bg-green-100 text-green-700 p-3 rounded-lg mb-4">{success}</div>}
 
-      {/* Formulaire */}
       {showForm && (
         <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
-          <h2 className="text-lg font-bold text-gray-800 mb-4">Nouveau Financement</h2>
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            {editingFinancement ? 'Modifier le financement' : 'Nouveau Financement'}
+          </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Projet</label>
-              <select
-                value={form.projet_id}
+              <select value={form.projet_id}
                 onChange={(e) => setForm({...form, projet_id: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              >
+                required>
                 <option value="">Sélectionner un projet</option>
                 {projets.map(p => (
                   <option key={p.id} value={p.id}>{p.titre}</option>
@@ -136,12 +170,10 @@ const Financements = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Partenaire</label>
-              <select
-                value={form.partenaire_id}
+              <select value={form.partenaire_id}
                 onChange={(e) => setForm({...form, partenaire_id: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              >
+                required>
                 <option value="">Sélectionner un partenaire</option>
                 {partenaires.map(p => (
                   <option key={p.id} value={p.id}>{p.denomination}</option>
@@ -150,92 +182,78 @@ const Financements = () => {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Montant promis (€)</label>
-              <input
-                type="number"
-                value={form.montant_promis}
+              <input type="number" value={form.montant_promis}
                 onChange={(e) => setForm({...form, montant_promis: e.target.value})}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-                required
-              />
+                required />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Montant versé (€)</label>
-              <input
-                type="number"
-                value={form.montant_verse}
+              <input type="number" value={form.montant_verse}
                 onChange={(e) => setForm({...form, montant_verse: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Date d'engagement</label>
-              <input
-                type="date"
-                value={form.date_engagement}
+              <input type="date" value={form.date_engagement}
                 onChange={(e) => setForm({...form, date_engagement: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              />
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Date de versement</label>
+              <input type="date" value={form.date_versement}
+                onChange={(e) => setForm({...form, date_versement: e.target.value})}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500" />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Référence</label>
+              <input type="text" value={form.reference}
+                onChange={(e) => setForm({...form, reference: e.target.value})}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-              <select
-                value={form.statut}
+              <select value={form.statut}
                 onChange={(e) => setForm({...form, statut: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              >
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500">
                 <option value="Promesse">Promesse</option>
                 <option value="Versement partiel">Versement partiel</option>
                 <option value="Versement total">Versement total</option>
                 <option value="Annulé">Annulé</option>
               </select>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Référence</label>
-              <input
-                type="text"
-                value={form.reference}
-                onChange={(e) => setForm({...form, reference: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
-              <input
-                type="text"
-                value={form.notes}
-                onChange={(e) => setForm({...form, notes: e.target.value})}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-              />
-            </div>
             <div className="md:col-span-2">
-              <button
-                type="submit"
-                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700"
-              >
-                Créer le financement
+              <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+              <input type="text" value={form.notes}
+                onChange={(e) => setForm({...form, notes: e.target.value})}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500" />
+            </div>
+            <div className="md:col-span-2 flex gap-2">
+              <button type="submit"
+                className="bg-green-600 text-white px-6 py-2 rounded-lg hover:bg-green-700">
+                {editingFinancement ? 'Modifier' : 'Créer le financement'}
+              </button>
+              <button type="button" onClick={handleCancel}
+                className="bg-gray-400 text-white px-6 py-2 rounded-lg hover:bg-gray-500">
+                Annuler
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* Sélection projet pour voir les financements */}
       <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
         <h2 className="text-lg font-bold text-gray-800 mb-4">
           Voir les financements par projet
         </h2>
-        <select
-          value={selectedProjet}
-          onChange={handleProjetChange}
-          className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500"
-        >
+        <select value={selectedProjet} onChange={handleProjetChange}
+          className="w-full md:w-1/2 border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500">
           <option value="">Sélectionner un projet</option>
           {projets.map(p => (
             <option key={p.id} value={p.id}>{p.titre}</option>
           ))}
         </select>
 
-        {/* Statistiques */}
         {stats && (
           <div className="mt-4">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
@@ -264,8 +282,6 @@ const Financements = () => {
                 </p>
               </div>
             </div>
-
-            {/* Barre de progression */}
             <div className="mt-2">
               <div className="flex justify-between text-sm text-gray-600 mb-1">
                 <span>Taux de financement</span>
@@ -282,16 +298,13 @@ const Financements = () => {
         )}
       </div>
 
-      {/* Liste des financements */}
       {selectedProjet && (
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">
             Financements ({financements.length})
           </h2>
           {financements.length === 0 ? (
-            <p className="text-gray-500 text-center py-8">
-              Aucun financement pour ce projet.
-            </p>
+            <p className="text-gray-500 text-center py-8">Aucun financement pour ce projet.</p>
           ) : (
             <table className="w-full">
               <thead>
@@ -301,6 +314,7 @@ const Financements = () => {
                   <th className="pb-3">Montant versé</th>
                   <th className="pb-3">Date engagement</th>
                   <th className="pb-3">Statut</th>
+                  <th className="pb-3">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -320,6 +334,22 @@ const Financements = () => {
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatutColor(f.statut)}`}>
                         {f.statut}
                       </span>
+                    </td>
+                    <td className="py-3">
+                      <div className="flex gap-2">
+  {(user?.role === 'admin' || user?.role === 'membre') && (
+    <button onClick={() => handleEdit(f)}
+      className="text-green-500 hover:text-green-700 text-sm">
+      ✏️
+    </button>
+  )}
+  {user?.role === 'admin' && (
+    <button onClick={() => handleDelete(f.id)}
+      className="text-red-500 hover:text-red-700 text-sm">
+      🗑️
+    </button>
+  )}
+</div>
                     </td>
                   </tr>
                 ))}

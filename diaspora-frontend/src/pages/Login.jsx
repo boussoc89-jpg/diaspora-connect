@@ -33,7 +33,7 @@ const Login = () => {
           <div className="bg-green-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold">
             DC
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">DiasporaConnect</h1>
+          <h1 className="text-2xl font-bold text-gray-800">DAS_connect</h1>
           <p className="text-gray-500 text-sm mt-1">Gestion de projets solidaires</p>
         </div>
 

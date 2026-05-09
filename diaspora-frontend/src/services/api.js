@@ -40,6 +40,8 @@ export const authService = {
   login: (data) => api.post("/auth/login", data),
   register: (data) => api.post("/auth/register", data),
   getProfile: () => api.get("/auth/profile"),
+  getUsers: () => api.get("/auth/users"),
+  updateUser: (id, data) => api.put(`/auth/users/${id}`, data),
 };
 
 // Services Projets
