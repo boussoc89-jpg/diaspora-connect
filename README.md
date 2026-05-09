@@ -1,5 +1,3 @@
-# DiasporaConnect
-
 # DAS_connect — Application Web de Gestion de Projets Solidaires
 
 ![Version](https://img.shields.io/badge/version-1.0.0-green)
