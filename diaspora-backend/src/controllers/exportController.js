@@ -31,7 +31,7 @@ const exportProjetPDF = async (req, res) => {
     doc
       .fontSize(20)
       .fillColor("#16a34a")
-      .text("DiasporaConnect", { align: "center" });
+      .text("DAS_connect", { align: "center" });
     doc
       .fontSize(14)
       .fillColor("#000000")
@@ -116,6 +116,8 @@ const exportProjetsExcel = async (req, res) => {
 
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet("Projets");
+    workbook.creator = "DAS_connect";
+    workbook.title = "DAS_connect - Export Projets";
 
     // En-têtes
     worksheet.columns = [
