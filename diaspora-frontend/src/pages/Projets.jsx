@@ -12,6 +12,10 @@ const Projets = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [typeBesoinPersonalise, setTypeBesoinPersonalise] = useState(false);
+  const [recherche, setRecherche] = useState('');
+  const [filtreStatut, setFiltreStatut] = useState('');
+  const [filtrePriorite, setFiltrePriorite] = useState('');
+  const [filtreType, setFiltreType] = useState('');
   const [form, setForm] = useState({
     titre: '',
     description: '',
@@ -37,6 +41,16 @@ const Projets = () => {
       setLoading(false);
     }
   };
+
+  const projetsFiltres = projets.filter(projet => {
+    const matchRecherche = projet.titre.toLowerCase().includes(recherche.toLowerCase()) ||
+      projet.village.toLowerCase().includes(recherche.toLowerCase()) ||
+      projet.region.toLowerCase().includes(recherche.toLowerCase());
+    const matchStatut = filtreStatut === '' || projet.statut === filtreStatut;
+    const matchPriorite = filtrePriorite === '' || projet.priorite === filtrePriorite;
+    const matchType = filtreType === '' || projet.type_besoin === filtreType;
+    return matchRecherche && matchStatut && matchPriorite && matchType;
+  });
 
   const handleEdit = (projet) => {
     setEditingProjet(projet.id);
@@ -153,11 +167,11 @@ const Projets = () => {
             📥 Export Excel
           </button>
           {(user?.role === 'admin' || user?.role === 'membre') && (
-  <button onClick={() => { setEditingProjet(null); setShowForm(!showForm); }}
-    className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
-    {showForm ? 'Annuler' : '+ Nouveau Projet'}
-  </button>
-)}
+            <button onClick={() => { setEditingProjet(null); setShowForm(!showForm); }}
+              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+              {showForm ? 'Annuler' : '+ Nouveau Projet'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -192,7 +206,9 @@ const Projets = () => {
               </div>
               <div>
                 <p className="text-xs text-gray-500">Budget estimé</p>
-                <p className="font-medium text-gray-800">{parseFloat(consultingProjet.budget_estime).toLocaleString('fr-FR')} €</p>
+                <p className="font-medium text-gray-800">
+                  {parseFloat(consultingProjet.budget_estime).toLocaleString('fr-FR')} €
+                </p>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Bénéficiaires</p>
@@ -357,15 +373,75 @@ const Projets = () => {
         </div>
       )}
 
+      {/* Filtres et recherche */}
+      <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div>
+            <input type="text"
+              placeholder="🔍 Rechercher un projet..."
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 text-sm" />
+          </div>
+          <div>
+            <select value={filtreStatut}
+              onChange={(e) => setFiltreStatut(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 text-sm">
+              <option value="">Tous les statuts</option>
+              <option value="Identifié">Identifié</option>
+              <option value="En recherche de financement">En recherche de financement</option>
+              <option value="Financé">Financé</option>
+              <option value="En cours de réalisation">En cours de réalisation</option>
+              <option value="Terminé">Terminé</option>
+              <option value="Archivé">Archivé</option>
+            </select>
+          </div>
+          <div>
+            <select value={filtrePriorite}
+              onChange={(e) => setFiltrePriorite(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 text-sm">
+              <option value="">Toutes les priorités</option>
+              <option value="haute">Haute</option>
+              <option value="moyenne">Moyenne</option>
+              <option value="basse">Basse</option>
+            </select>
+          </div>
+          <div>
+            <select value={filtreType}
+              onChange={(e) => setFiltreType(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:border-green-500 text-sm">
+              <option value="">Tous les types</option>
+              <option value="eau">Eau</option>
+              <option value="éducation">Éducation</option>
+              <option value="santé">Santé</option>
+              <option value="agriculture">Agriculture</option>
+              <option value="autre">Autre</option>
+            </select>
+          </div>
+        </div>
+        {(recherche || filtreStatut || filtrePriorite || filtreType) && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-sm text-gray-500">
+              {projetsFiltres.length} résultat(s) trouvé(s)
+            </span>
+            <button
+              onClick={() => { setRecherche(''); setFiltreStatut(''); setFiltrePriorite(''); setFiltreType(''); }}
+              className="text-sm text-red-500 hover:text-red-700">
+              ✕ Effacer les filtres
+            </button>
+          </div>
+        )}
+      </div>
+
       {/* Liste des projets */}
       <div className="bg-white rounded-xl shadow-sm p-6">
         <h2 className="text-lg font-bold text-gray-800 mb-4">
-          Liste des projets ({projets.length})
+          Liste des projets ({projetsFiltres.length})
         </h2>
         {loading ? (
           <p className="text-gray-500 text-center py-8">Chargement...</p>
-        ) : projets.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">Aucun projet pour le moment.</p>
+        ) : projetsFiltres.length === 0 ? (
+          <p className="text-gray-500 text-center py-8">Aucun projet trouvé.</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-max">
@@ -381,7 +457,7 @@ const Projets = () => {
                 </tr>
               </thead>
               <tbody>
-                {projets.map((projet) => (
+                {projetsFiltres.map((projet) => (
                   <tr key={projet.id} className="border-b last:border-0 hover:bg-gray-50">
                     <td className="py-3 px-2 font-medium text-gray-800 max-w-xs truncate">{projet.titre}</td>
                     <td className="py-3 px-2 text-gray-600 whitespace-nowrap">{projet.village}</td>
@@ -397,27 +473,19 @@ const Projets = () => {
                     </td>
                     <td className="py-3 px-2">
                       <div className="flex gap-1 whitespace-nowrap">
-  <button onClick={() => setConsultingProjet(projet)}
-    className="text-purple-500 hover:text-purple-700 text-sm">
-    👁️
-  </button>
-  {(user?.role === 'admin' || user?.role === 'membre') && (
-    <button onClick={() => handleEdit(projet)}
-      className="text-green-500 hover:text-green-700 text-sm">
-      ✏️
-    </button>
-  )}
-  <button onClick={() => handleExportPDF(projet.id)}
-    className="text-blue-500 hover:text-blue-700 text-sm">
-    📄
-  </button>
-  {user?.role === 'admin' && (
-    <button onClick={() => handleDelete(projet.id)}
-      className="text-red-500 hover:text-red-700 text-sm">
-      🗑️
-    </button>
-  )}
-</div>
+                        <button onClick={() => setConsultingProjet(projet)}
+                          className="text-purple-500 hover:text-purple-700 text-sm">👁️</button>
+                        {(user?.role === 'admin' || user?.role === 'membre') && (
+                          <button onClick={() => handleEdit(projet)}
+                            className="text-green-500 hover:text-green-700 text-sm">✏️</button>
+                        )}
+                        <button onClick={() => handleExportPDF(projet.id)}
+                          className="text-blue-500 hover:text-blue-700 text-sm">📄</button>
+                        {user?.role === 'admin' && (
+                          <button onClick={() => handleDelete(projet.id)}
+                            className="text-red-500 hover:text-red-700 text-sm">🗑️</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
