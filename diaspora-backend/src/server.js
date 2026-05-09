@@ -1,10 +1,10 @@
 require("dotenv").config();
 const app = require("./app");
 const { sequelize, syncDatabase } = require("./models/index");
+const seedData = require("./config/seedData");
 
 const PORT = process.env.PORT || 5000;
 
-// Démarrage du serveur
 const startServer = async () => {
   try {
     await sequelize.authenticate();
@@ -12,8 +12,11 @@ const startServer = async () => {
 
     await syncDatabase();
 
+    // Insérer les données de démonstration
+    await seedData();
+
     app.listen(PORT, () => {
-      console.log(`🚀 Serveur DiasporaConnect démarré sur le port ${PORT}`);
+      console.log(`🚀 Serveur DAS_connect démarré sur le port ${PORT}`);
     });
   } catch (error) {
     console.error("❌ Erreur de démarrage :", error.message);
