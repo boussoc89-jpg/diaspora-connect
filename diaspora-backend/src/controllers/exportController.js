@@ -27,7 +27,6 @@ const exportProjetPDF = async (req, res) => {
     );
     doc.pipe(res);
 
-    // En-tête
     doc
       .fontSize(20)
       .fillColor("#16a34a")
@@ -40,12 +39,11 @@ const exportProjetPDF = async (req, res) => {
     doc.moveTo(50, doc.y).lineTo(550, doc.y).stroke();
     doc.moveDown();
 
-    // Informations générales
     doc.fontSize(16).fillColor("#16a34a").text("Informations générales");
     doc.moveDown(0.5);
     doc.fontSize(12).fillColor("#000000");
     doc.text(`Titre : ${projet.titre}`);
-    doc.text(`Village : ${projet.village}`);
+    doc.text(`Localité : ${projet.village}`);
     doc.text(`Région : ${projet.region}`);
     doc.text(`Type de besoin : ${projet.type_besoin}`);
     doc.text(`Priorité : ${projet.priorite}`);
@@ -53,13 +51,11 @@ const exportProjetPDF = async (req, res) => {
     doc.text(`Nombre de bénéficiaires : ${projet.nb_beneficiaires}`);
     doc.moveDown();
 
-    // Description
     doc.fontSize(16).fillColor("#16a34a").text("Description");
     doc.moveDown(0.5);
     doc.fontSize(12).fillColor("#000000").text(projet.description);
     doc.moveDown();
 
-    // Objectifs
     if (projet.objectifs) {
       doc.fontSize(16).fillColor("#16a34a").text("Objectifs");
       doc.moveDown(0.5);
@@ -67,7 +63,6 @@ const exportProjetPDF = async (req, res) => {
       doc.moveDown();
     }
 
-    // Budget
     doc.fontSize(16).fillColor("#16a34a").text("Suivi financier");
     doc.moveDown(0.5);
     doc.fontSize(12).fillColor("#000000");
@@ -89,7 +84,6 @@ const exportProjetPDF = async (req, res) => {
     );
     doc.moveDown();
 
-    // Partenaires
     if (projet.financements.length > 0) {
       doc.fontSize(16).fillColor("#16a34a").text("Partenaires et financements");
       doc.moveDown(0.5);
@@ -107,23 +101,33 @@ const exportProjetPDF = async (req, res) => {
   }
 };
 
-// Export Excel de tous les projets
+// Export Excel des projets
 const exportProjetsExcel = async (req, res) => {
   try {
-    const projets = await Projet.findAll({
-      include: [{ model: Financement, as: "financements" }],
-    });
+    const { ids } = req.query;
+
+    let projets;
+    if (ids) {
+      const idsArray = ids.split(",").map((id) => parseInt(id));
+      projets = await Projet.findAll({
+        where: { id: idsArray },
+        include: [{ model: Financement, as: "financements" }],
+      });
+    } else {
+      projets = await Projet.findAll({
+        include: [{ model: Financement, as: "financements" }],
+      });
+    }
 
     const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet("Projets");
     workbook.creator = "DAS_connect";
     workbook.title = "DAS_connect - Export Projets";
+    const worksheet = workbook.addWorksheet("Projets");
 
-    // En-têtes
     worksheet.columns = [
       { header: "ID", key: "id", width: 5 },
       { header: "Titre", key: "titre", width: 30 },
-      { header: "Village", key: "village", width: 20 },
+      { header: "Localité", key: "village", width: 20 },
       { header: "Région", key: "region", width: 20 },
       { header: "Type de besoin", key: "type_besoin", width: 15 },
       { header: "Budget estimé (€)", key: "budget_estime", width: 18 },
@@ -134,7 +138,6 @@ const exportProjetsExcel = async (req, res) => {
       { header: "Statut", key: "statut", width: 25 },
     ];
 
-    // Style en-têtes
     worksheet.getRow(1).font = { bold: true, color: { argb: "FFFFFFFF" } };
     worksheet.getRow(1).fill = {
       type: "pattern",
@@ -142,7 +145,6 @@ const exportProjetsExcel = async (req, res) => {
       fgColor: { argb: "FF16a34a" },
     };
 
-    // Données
     projets.forEach((projet) => {
       const totalVerse = projet.financements.reduce(
         (sum, f) => sum + parseFloat(f.montant_verse || 0),
