@@ -16,6 +16,9 @@ const Projets = () => {
   const [filtreStatut, setFiltreStatut] = useState('');
   const [filtrePriorite, setFiltrePriorite] = useState('');
   const [filtreType, setFiltreType] = useState('');
+  const [projetsSelectionnes, setProjetsSelectionnes] = useState([]);
+  const [pageCourante, setPageCourante] = useState(1);
+  const projetsParPage = 5;
   const [form, setForm] = useState({
     titre: '',
     description: '',
@@ -30,6 +33,10 @@ const Projets = () => {
   });
 
   useEffect(() => { fetchProjets(); }, []);
+
+  useEffect(() => {
+    setPageCourante(1);
+  }, [recherche, filtreStatut, filtrePriorite, filtreType]);
 
   const fetchProjets = async () => {
     try {
@@ -51,6 +58,43 @@ const Projets = () => {
     const matchType = filtreType === '' || projet.type_besoin === filtreType;
     return matchRecherche && matchStatut && matchPriorite && matchType;
   });
+
+  const totalPages = Math.ceil(projetsFiltres.length / projetsParPage);
+  const indexDebut = (pageCourante - 1) * projetsParPage;
+  const indexFin = indexDebut + projetsParPage;
+  const projetsPagines = projetsFiltres.slice(indexDebut, indexFin);
+
+  const toggleSelection = (id) => {
+    setProjetsSelectionnes(prev =>
+      prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+    );
+  };
+
+  const toggleTout = () => {
+    if (projetsSelectionnes.length === projetsFiltres.length) {
+      setProjetsSelectionnes([]);
+    } else {
+      setProjetsSelectionnes(projetsFiltres.map(p => p.id));
+    }
+  };
+
+  const handleExportExcelSelection = async () => {
+    try {
+      const ids = projetsSelectionnes.length > 0
+        ? projetsSelectionnes
+        : projetsFiltres.map(p => p.id);
+      const res = await exportService.exportProjetsExcel(ids);
+      const url = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', 'projets.xlsx');
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (err) {
+      setError('Erreur lors de l export Excel.');
+    }
+  };
 
   const handleEdit = (projet) => {
     setEditingProjet(projet.id);
@@ -130,21 +174,6 @@ const Projets = () => {
     }
   };
 
-  const handleExportExcel = async () => {
-    try {
-      const res = await exportService.exportProjetsExcel();
-      const url = window.URL.createObjectURL(new Blob([res.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', 'projets.xlsx');
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (err) {
-      setError('Erreur lors de l export Excel.');
-    }
-  };
-
   const getStatutColor = (statut) => {
     const colors = {
       'Identifié': 'bg-gray-100 text-gray-700',
@@ -162,9 +191,9 @@ const Projets = () => {
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Gestion des Projets</h1>
         <div className="flex gap-2">
-          <button onClick={handleExportExcel}
+          <button onClick={handleExportExcelSelection}
             className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
-            📥 Export Excel
+            📥 {projetsSelectionnes.length > 0 ? `Exporter (${projetsSelectionnes.length})` : 'Export Excel'}
           </button>
           {(user?.role === 'admin' || user?.role === 'membre') && (
             <button onClick={() => { setEditingProjet(null); setShowForm(!showForm); }}
@@ -235,18 +264,26 @@ const Projets = () => {
                 </div>
               )}
             </div>
-            <div className="mt-4 flex gap-2">
-              <button onClick={() => { setConsultingProjet(null); handleEdit(consultingProjet); }}
-                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
-                ✏️ Modifier
-              </button>
+            <div className="mt-4 flex gap-2 flex-wrap">
+              {(user?.role === 'admin' || user?.role === 'membre') && (
+                <button onClick={() => { setConsultingProjet(null); handleEdit(consultingProjet); }}
+                  className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 text-sm">
+                  ✏️ Modifier
+                </button>
+              )}
               <button onClick={() => handleExportPDF(consultingProjet.id)}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
                 📄 Export PDF
               </button>
+              {user?.role === 'admin' && (
+                <button onClick={() => { setConsultingProjet(null); handleDelete(consultingProjet.id); }}
+                  className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 text-sm">
+                  🗑️ Supprimer
+                </button>
+              )}
               <button onClick={() => setConsultingProjet(null)}
                 className="bg-gray-400 text-white px-4 py-2 rounded-lg hover:bg-gray-500 text-sm">
-                Fermer
+                ✕ Fermer
               </button>
             </div>
           </div>
@@ -447,6 +484,12 @@ const Projets = () => {
             <table className="w-full min-w-max">
               <thead>
                 <tr className="text-left text-gray-500 text-sm border-b">
+                  <th className="pb-3 px-2">
+                    <input type="checkbox"
+                      checked={projetsSelectionnes.length === projetsFiltres.length && projetsFiltres.length > 0}
+                      onChange={toggleTout}
+                      className="cursor-pointer" />
+                  </th>
                   <th className="pb-3 px-2">Titre</th>
                   <th className="pb-3 px-2">Localité</th>
                   <th className="pb-3 px-2">Budget</th>
@@ -457,8 +500,14 @@ const Projets = () => {
                 </tr>
               </thead>
               <tbody>
-                {projetsFiltres.map((projet) => (
+                {projetsPagines.map((projet) => (
                   <tr key={projet.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="py-3 px-2">
+                      <input type="checkbox"
+                        checked={projetsSelectionnes.includes(projet.id)}
+                        onChange={() => toggleSelection(projet.id)}
+                        className="cursor-pointer" />
+                    </td>
                     <td className="py-3 px-2 font-medium text-gray-800 max-w-xs truncate">{projet.titre}</td>
                     <td className="py-3 px-2 text-gray-600 whitespace-nowrap">{projet.village}</td>
                     <td className="py-3 px-2 text-gray-600 whitespace-nowrap">
@@ -472,25 +521,46 @@ const Projets = () => {
                       </span>
                     </td>
                     <td className="py-3 px-2">
-                      <div className="flex gap-1 whitespace-nowrap">
-                        <button onClick={() => setConsultingProjet(projet)}
-                          className="text-purple-500 hover:text-purple-700 text-sm">👁️</button>
-                        {(user?.role === 'admin' || user?.role === 'membre') && (
-                          <button onClick={() => handleEdit(projet)}
-                            className="text-green-500 hover:text-green-700 text-sm">✏️</button>
-                        )}
-                        <button onClick={() => handleExportPDF(projet.id)}
-                          className="text-blue-500 hover:text-blue-700 text-sm">📄</button>
-                        {user?.role === 'admin' && (
-                          <button onClick={() => handleDelete(projet.id)}
-                            className="text-red-500 hover:text-red-700 text-sm">🗑️</button>
-                        )}
-                      </div>
+                      <button onClick={() => setConsultingProjet(projet)}
+                        className="bg-purple-100 text-purple-700 hover:bg-purple-200 px-3 py-1 rounded-lg text-sm font-medium">
+                        👁️ Consulter
+                      </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-4 flex items-center justify-between">
+                <p className="text-sm text-gray-500">
+                  Affichage {indexDebut + 1} à {Math.min(indexFin, projetsFiltres.length)} sur {projetsFiltres.length} projets
+                </p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setPageCourante(p => Math.max(p - 1, 1))}
+                    disabled={pageCourante === 1}
+                    className="px-3 py-1 rounded-lg border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100">
+                    ◀ Précédent
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setPageCourante(page)}
+                      className={`px-3 py-1 rounded-lg border text-sm font-medium ${pageCourante === page ? 'bg-green-600 text-white border-green-600' : 'hover:bg-gray-100'}`}>
+                      {page}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setPageCourante(p => Math.min(p + 1, totalPages))}
+                    disabled={pageCourante === totalPages}
+                    className="px-3 py-1 rounded-lg border text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100">
+                    Suivant ▶
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

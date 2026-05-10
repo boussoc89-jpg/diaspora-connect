@@ -74,7 +74,10 @@ export const financementService = {
 export const exportService = {
   exportProjetPDF: (id) =>
     api.get(`/export/projet/${id}/pdf`, { responseType: "blob" }),
-  exportProjetsExcel: () =>
-    api.get("/export/projets/excel", { responseType: "blob" }),
+  exportProjetsExcel: (ids) =>
+    api.get("/export/projets/excel", {
+      responseType: "blob",
+      params: ids && ids.length > 0 ? { ids: ids.join(",") } : {},
+    }),
 };
 export default api;
