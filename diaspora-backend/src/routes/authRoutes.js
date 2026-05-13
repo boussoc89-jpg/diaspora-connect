@@ -37,5 +37,17 @@ router.put("/users/:id", protect, authorize("admin"), async (req, res) => {
     res.status(500).json({ message: "Erreur serveur.", error: error.message });
   }
 });
+// Supprimer un utilisateur (admin uniquement)
+router.delete("/users/:id", protect, authorize("admin"), async (req, res) => {
+  try {
+    const user = await User.findByPk(req.params.id);
+    if (!user)
+      return res.status(404).json({ message: "Utilisateur non trouvé." });
+    await user.destroy();
+    res.json({ message: "Utilisateur supprimé avec succès !" });
+  } catch (error) {
+    res.status(500).json({ message: "Erreur serveur.", error: error.message });
+  }
+});
 
 module.exports = router;

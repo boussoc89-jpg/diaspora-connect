@@ -3,17 +3,28 @@ const User = require("./User");
 const Projet = require("./Projet");
 const Partenaire = require("./Partenaire");
 const Financement = require("./Financement");
+const Cotisation = require("./Cotisation");
+const Depense = require("./Depense");
 
-// Relations entre les modèles
-// Un User peut créer plusieurs Projets
+// Vérification des modèles
+console.log("Modèles chargés:", {
+  User: !!User,
+  Projet: !!Projet,
+  Partenaire: !!Partenaire,
+  Financement: !!Financement,
+  Cotisation: !!Cotisation,
+  Depense: !!Depense,
+});
+
+// Relations User - Projet
 User.hasMany(Projet, { foreignKey: "created_by", as: "projets" });
 Projet.belongsTo(User, { foreignKey: "created_by", as: "createur" });
 
-// Un Projet peut avoir plusieurs Financements
+// Relations Projet - Financement
 Projet.hasMany(Financement, { foreignKey: "projet_id", as: "financements" });
 Financement.belongsTo(Projet, { foreignKey: "projet_id", as: "projet" });
 
-// Un Partenaire peut avoir plusieurs Financements
+// Relations Partenaire - Financement
 Partenaire.hasMany(Financement, {
   foreignKey: "partenaire_id",
   as: "financements",
@@ -23,7 +34,18 @@ Financement.belongsTo(Partenaire, {
   as: "partenaire",
 });
 
-// Synchroniser les modèles avec la base de données
+// Relations User - Cotisation
+User.hasMany(Cotisation, { foreignKey: "user_id", as: "cotisations" });
+Cotisation.belongsTo(User, { foreignKey: "user_id", as: "membre" });
+
+// Relations Projet - Depense
+Projet.hasMany(Depense, { foreignKey: "projet_id", as: "depenses" });
+Depense.belongsTo(Projet, { foreignKey: "projet_id", as: "projet" });
+
+// Relations User - Depense
+User.hasMany(Depense, { foreignKey: "created_by", as: "depenses" });
+Depense.belongsTo(User, { foreignKey: "created_by", as: "createur" });
+
 const syncDatabase = async () => {
   try {
     await sequelize.sync({ alter: true });
@@ -39,5 +61,7 @@ module.exports = {
   Projet,
   Partenaire,
   Financement,
+  Cotisation,
+  Depense,
   syncDatabase,
 };

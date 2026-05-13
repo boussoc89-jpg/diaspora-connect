@@ -42,6 +42,7 @@ export const authService = {
   getProfile: () => api.get("/auth/profile"),
   getUsers: () => api.get("/auth/users"),
   updateUser: (id, data) => api.put(`/auth/users/${id}`, data),
+  deleteUser: (id) => api.delete(`/auth/users/${id}`),
 };
 
 // Services Projets
@@ -79,5 +80,23 @@ export const exportService = {
       responseType: "blob",
       params: ids && ids.length > 0 ? { ids: ids.join(",") } : {},
     }),
+};
+// Services Cotisations
+export const cotisationService = {
+  getAll: () => api.get("/cotisations"),
+  getByMembre: (userId) => api.get(`/cotisations/membre/${userId}`),
+  getStats: () => api.get("/cotisations/stats"),
+  create: (data) => api.post("/cotisations", data),
+  update: (id, data) => api.put(`/cotisations/${id}`, data),
+  delete: (id) => api.delete(`/cotisations/${id}`),
+};
+
+// Services Dépenses
+export const depenseService = {
+  getAll: () => api.get("/depenses"),
+  getStats: () => api.get("/depenses/stats"),
+  create: (data) => api.post("/depenses", data),
+  update: (id, data) => api.put(`/depenses/${id}`, data),
+  delete: (id) => api.delete(`/depenses/${id}`),
 };
 export default api;

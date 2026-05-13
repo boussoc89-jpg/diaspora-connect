@@ -33,20 +33,26 @@ const Navbar = () => {
       </div>
 
       <div className="px-6 pb-2 flex gap-2 flex-wrap">
-        <Link to="/dashboard" className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive('/dashboard')}`}>
+        <Link to="/dashboard" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/dashboard')}`}>
           🏠 Tableau de bord
         </Link>
-        <Link to="/projets" className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive('/projets')}`}>
+        <Link to="/projets" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/projets')}`}>
           📋 Projets
         </Link>
-        <Link to="/partenaires" className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive('/partenaires')}`}>
+        <Link to="/partenaires" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/partenaires')}`}>
           🤝 Partenaires
         </Link>
-        <Link to="/financements" className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive('/financements')}`}>
+        <Link to="/financements" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/financements')}`}>
           💰 Financements
         </Link>
+        <Link to="/cotisations" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/cotisations')}`}>
+          💵 Cotisations
+        </Link>
+        <Link to="/depenses" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/depenses')}`}>
+          📤 Dépenses
+        </Link>
         {user?.role === 'admin' && (
-          <Link to="/utilisateurs" className={`px-4 py-2 rounded-lg text-sm font-medium transition ${isActive('/utilisateurs')}`}>
+          <Link to="/utilisateurs" className={`px-3 py-2 rounded-lg text-sm font-medium transition ${isActive('/utilisateurs')}`}>
             👥 Utilisateurs
           </Link>
         )}

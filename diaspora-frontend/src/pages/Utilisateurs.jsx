@@ -54,6 +54,17 @@ const Utilisateurs = () => {
       setError('Erreur lors de la mise à jour.');
     }
   };
+  const handleDelete = async (id) => {
+  if (window.confirm('Voulez-vous vraiment supprimer cet utilisateur ?')) {
+    try {
+      await authService.deleteUser(id);
+      setSuccess('Utilisateur supprimé avec succès !');
+      fetchUtilisateurs();
+    } catch (err) {
+      setError('Erreur lors de la suppression.');
+    }
+  }
+};
 
   const getRoleColor = (role) => {
     const colors = {
@@ -198,14 +209,21 @@ const Utilisateurs = () => {
                     </span>
                   </td>
                   <td className="py-3">
-                    {u.id !== user.id && (
-                      <button
-                        onClick={() => handleToggleActif(u.id, u.actif)}
-                        className={`text-sm ${u.actif ? 'text-red-500 hover:text-red-700' : 'text-green-500 hover:text-green-700'}`}>
-                        {u.actif ? '🔒 Désactiver' : '🔓 Activer'}
-                      </button>
-                    )}
-                  </td>
+  {u.id !== user.id && (
+    <div className="flex gap-2">
+      <button
+        onClick={() => handleToggleActif(u.id, u.actif)}
+        className={`text-sm ${u.actif ? 'text-orange-500 hover:text-orange-700' : 'text-green-500 hover:text-green-700'}`}>
+        {u.actif ? '🔒 Désactiver' : '🔓 Activer'}
+      </button>
+      <button
+        onClick={() => handleDelete(u.id)}
+        className="text-red-500 hover:text-red-700 text-sm">
+        🗑️ Supprimer
+      </button>
+    </div>
+  )}
+</td>
                 </tr>
               ))}
             </tbody>

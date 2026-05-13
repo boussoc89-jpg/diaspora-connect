@@ -30,17 +30,14 @@ const createFinancement = async (req, res) => {
       notes,
     } = req.body;
 
-    // Vérifier que le projet existe
-    const projet = await Projet.findByPk(projet_id);
-    if (!projet) {
-      return res.status(404).json({ message: "Projet non trouvé." });
-    }
+    const projet = await Projet.findByPk(projet_id, {
+      include: [{ model: Financement, as: "financements" }],
+    });
+    if (!projet) return res.status(404).json({ message: "Projet non trouvé." });
 
-    // Vérifier que le partenaire existe
     const partenaire = await Partenaire.findByPk(partenaire_id);
-    if (!partenaire) {
+    if (!partenaire)
       return res.status(404).json({ message: "Partenaire non trouvé." });
-    }
 
     const financement = await Financement.create({
       projet_id,
@@ -54,9 +51,34 @@ const createFinancement = async (req, res) => {
       notes,
     });
 
+    // Calcul total versé pour ce projet
+    const tousFinancements = await Financement.findAll({
+      where: { projet_id },
+    });
+    const totalVerse = tousFinancements.reduce(
+      (sum, f) => sum + parseFloat(f.montant_verse || 0),
+      0,
+    );
+    const budgetEstime = parseFloat(projet.budget_estime);
+
+    // Mise à jour automatique du statut
+    let nouveauStatut = projet.statut;
+    if (totalVerse >= budgetEstime) {
+      nouveauStatut = "Terminé";
+    } else if (totalVerse > 0) {
+      nouveauStatut = "En cours de réalisation";
+    } else if (parseFloat(montant_promis) > 0) {
+      nouveauStatut = "Financé";
+    }
+
+    if (nouveauStatut !== projet.statut) {
+      await projet.update({ statut: nouveauStatut });
+    }
+
     res.status(201).json({
       message: "Financement créé avec succès !",
       financement,
+      projet_statut: nouveauStatut,
     });
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur.", error: error.message });
@@ -67,11 +89,40 @@ const createFinancement = async (req, res) => {
 const updateFinancement = async (req, res) => {
   try {
     const financement = await Financement.findByPk(req.params.id);
-    if (!financement) {
+    if (!financement)
       return res.status(404).json({ message: "Financement non trouvé." });
-    }
+
     await financement.update(req.body);
-    res.json({ message: "Financement mis à jour avec succès !", financement });
+
+    // Recalcul du statut projet
+    const projet = await Projet.findByPk(financement.projet_id);
+    const tousFinancements = await Financement.findAll({
+      where: { projet_id: financement.projet_id },
+    });
+    const totalVerse = tousFinancements.reduce(
+      (sum, f) => sum + parseFloat(f.montant_verse || 0),
+      0,
+    );
+    const budgetEstime = parseFloat(projet.budget_estime);
+
+    let nouveauStatut = projet.statut;
+    if (totalVerse >= budgetEstime) {
+      nouveauStatut = "Terminé";
+    } else if (totalVerse > 0) {
+      nouveauStatut = "En cours de réalisation";
+    } else if (tousFinancements.some((f) => parseFloat(f.montant_promis) > 0)) {
+      nouveauStatut = "Financé";
+    }
+
+    if (nouveauStatut !== projet.statut) {
+      await projet.update({ statut: nouveauStatut });
+    }
+
+    res.json({
+      message: "Financement mis à jour !",
+      financement,
+      projet_statut: nouveauStatut,
+    });
   } catch (error) {
     res.status(500).json({ message: "Erreur serveur.", error: error.message });
   }

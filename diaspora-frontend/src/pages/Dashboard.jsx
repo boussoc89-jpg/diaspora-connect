@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { projetService, partenaireService } from '../services/api';
+import { cotisationService, depenseService, financementService } from '../services/api';
 import {
   PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, Legend, ResponsiveContainer
@@ -12,17 +13,52 @@ const Dashboard = () => {
   const { user } = useAuth();
   const [projets, setProjets] = useState([]);
   const [partenaires, setPartenaires] = useState([]);
+  const [caisse, setCaisse] = useState({
+    totalCotisations: 0,
+    totalVersements: 0,
+    totalDepenses: 0,
+    solde: 0
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [projetsRes, partenairesRes] = await Promise.all([
+        const [projetsRes, partenairesRes, cotisationsRes, depensesRes, financementsRes] = await Promise.all([
           projetService.getAll(),
-          partenaireService.getAll()
+          partenaireService.getAll(),
+          cotisationService.getStats(),
+          depenseService.getStats(),
+          projetService.getAll()
         ]);
+
         setProjets(projetsRes.data.projets);
         setPartenaires(partenairesRes.data.partenaires);
+
+        // Calcul caisse
+        const totalCotisations = cotisationsRes.data.total || 0;
+        const totalDepenses = depensesRes.data.total || 0;
+
+        // Total versements partenaires
+        const tousLesProjets = financementsRes.data.projets;
+        let totalVersements = 0;
+        tousLesProjets.forEach(projet => {
+          if (projet.financements) {
+            projet.financements.forEach(f => {
+              totalVersements += parseFloat(f.montant_verse || 0);
+            });
+          }
+        });
+
+        const solde = totalCotisations + totalVersements - totalDepenses;
+
+        setCaisse({
+          totalCotisations,
+          totalVersements,
+          totalDepenses,
+          solde
+        });
+
       } catch (error) {
         console.error('Erreur:', error);
       } finally {
@@ -32,13 +68,19 @@ const Dashboard = () => {
     fetchData();
   }, []);
 
-  // Statistiques
+  // Statistiques projets actifs (hors Terminé et Archivé)
+  const projetsActifs = projets.filter(p =>
+    p.statut !== 'Terminé' && p.statut !== 'Archivé'
+  );
+
   const totalProjets = projets.length;
-  const projetsActifs = projets.filter(p => p.statut === 'En cours de réalisation').length;
-  const totalBudget = projets.reduce((sum, p) => sum + parseFloat(p.budget_estime || 0), 0);
+  const totalBudgetActif = projetsActifs.reduce((sum, p) => {
+  const totalVerse = p.financements ? p.financements.reduce((s, f) => s + parseFloat(f.montant_verse || 0), 0) : 0;
+  return sum + parseFloat(p.budget_estime || 0) - totalVerse;
+}, 0);
   const totalPartenaires = partenaires.length;
 
-  // Données pour graphique statuts
+  // Données graphiques
   const statutsData = projets.reduce((acc, projet) => {
     const existing = acc.find(item => item.name === projet.statut);
     if (existing) existing.value++;
@@ -46,7 +88,6 @@ const Dashboard = () => {
     return acc;
   }, []);
 
-  // Données pour graphique types de besoins
   const besoinsData = projets.reduce((acc, projet) => {
     const existing = acc.find(item => item.name === projet.type_besoin);
     if (existing) existing.budget += parseFloat(projet.budget_estime || 0);
@@ -54,7 +95,6 @@ const Dashboard = () => {
     return acc;
   }, []);
 
-  // Données pour graphique priorités
   const prioritesData = [
     { name: 'Haute', value: projets.filter(p => p.priorite === 'haute').length },
     { name: 'Moyenne', value: projets.filter(p => p.priorite === 'moyenne').length },
@@ -83,36 +123,69 @@ const Dashboard = () => {
 
   return (
     <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Tableau de bord
-      </h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-6">Tableau de bord</h1>
 
       {/* Cartes statistiques */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-green-500">
           <p className="text-gray-500 text-sm">Total Projets</p>
           <p className="text-3xl font-bold text-gray-800">{totalProjets}</p>
+          <p className="text-xs text-gray-400 mt-1">{projetsActifs.length} actifs</p>
         </div>
         <div className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-blue-500">
-          <p className="text-gray-500 text-sm">Projets Actifs</p>
-          <p className="text-3xl font-bold text-gray-800">{projetsActifs}</p>
-        </div>
-        <div className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-yellow-500">
-          <p className="text-gray-500 text-sm">Budget Total</p>
-          <p className="text-3xl font-bold text-gray-800">
-            {totalBudget.toLocaleString('fr-FR')} €
-          </p>
-        </div>
+  <p className="text-gray-500 text-sm">Reste à financer</p>
+  <p className="text-2xl font-bold text-gray-800">
+    {totalBudgetActif.toLocaleString('fr-FR')} €
+  </p>
+  <p className="text-xs text-gray-400 mt-1">Budget - versements reçus</p>
+</div>
         <div className="bg-white rounded-xl p-5 shadow-sm border-l-4 border-purple-500">
           <p className="text-gray-500 text-sm">Partenaires</p>
           <p className="text-3xl font-bold text-gray-800">{totalPartenaires}</p>
+          <p className="text-xs text-gray-400 mt-1">Actifs</p>
+        </div>
+        <div className={`bg-white rounded-xl p-5 shadow-sm border-l-4 ${caisse.solde >= 0 ? 'border-green-500' : 'border-red-500'}`}>
+          <p className="text-gray-500 text-sm">💰 Caisse</p>
+          <p className={`text-2xl font-bold ${caisse.solde >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {caisse.solde.toLocaleString('fr-FR')} €
+          </p>
+          <p className="text-xs text-gray-400 mt-1">Solde disponible</p>
+        </div>
+      </div>
+
+      {/* Détail Caisse */}
+      <div className="bg-white rounded-xl shadow-sm p-6 mb-8">
+        <h2 className="text-lg font-bold text-gray-800 mb-4">🏦 Détail de la Caisse</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-green-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">💵 Cotisations membres</p>
+            <p className="text-2xl font-bold text-green-600">
+              +{caisse.totalCotisations.toLocaleString('fr-FR')} €
+            </p>
+          </div>
+          <div className="bg-blue-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">🤝 Versements partenaires</p>
+            <p className="text-2xl font-bold text-blue-600">
+              +{caisse.totalVersements.toLocaleString('fr-FR')} €
+            </p>
+          </div>
+          <div className="bg-red-50 rounded-lg p-4">
+            <p className="text-sm text-gray-500">📤 Total dépenses</p>
+            <p className="text-2xl font-bold text-red-600">
+              -{caisse.totalDepenses.toLocaleString('fr-FR')} €
+            </p>
+          </div>
+        </div>
+        <div className="mt-4 p-4 bg-gray-50 rounded-lg flex justify-between items-center">
+          <span className="font-bold text-gray-700">Solde de la caisse :</span>
+          <span className={`text-2xl font-bold ${caisse.solde >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {caisse.solde.toLocaleString('fr-FR')} €
+          </span>
         </div>
       </div>
 
       {/* Graphiques */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-
-        {/* Graphique statuts */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Projets par statut</h2>
           {statutsData.length === 0 ? (
@@ -120,14 +193,8 @@ const Dashboard = () => {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={statutsData}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  dataKey="value"
-                  label={({ name, value }) => `${value}`}
-                >
+                <Pie data={statutsData} cx="50%" cy="50%" outerRadius={70} dataKey="value"
+                  label={({ name, value }) => `${value}`}>
                   {statutsData.map((entry, index) => (
                     <Cell key={index} fill={COLORS[index % COLORS.length]} />
                   ))}
@@ -139,7 +206,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Graphique priorités */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Projets par priorité</h2>
           {prioritesData.every(p => p.value === 0) ? (
@@ -147,14 +213,9 @@ const Dashboard = () => {
           ) : (
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={prioritesData.filter(p => p.value > 0)}
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={70}
-                  dataKey="value"
-                  label={({ name, value }) => `${name}: ${value}`}
-                >
+                <Pie data={prioritesData.filter(p => p.value > 0)} cx="50%" cy="50%"
+                  outerRadius={70} dataKey="value"
+                  label={({ name, value }) => `${name} : ${value}`}>
                   <Cell fill="#dc2626" />
                   <Cell fill="#d97706" />
                   <Cell fill="#16a34a" />
@@ -165,7 +226,6 @@ const Dashboard = () => {
           )}
         </div>
 
-        {/* Graphique budgets par type */}
         <div className="bg-white rounded-xl shadow-sm p-6">
           <h2 className="text-lg font-bold text-gray-800 mb-4">Budget par type de besoin</h2>
           {besoinsData.length === 0 ? (
@@ -194,7 +254,7 @@ const Dashboard = () => {
             <thead>
               <tr className="text-left text-gray-500 text-sm border-b">
                 <th className="pb-3">Titre</th>
-                <th className="pb-3">Village</th>
+                <th className="pb-3">Localité</th>
                 <th className="pb-3">Budget</th>
                 <th className="pb-3">Priorité</th>
                 <th className="pb-3">Statut</th>

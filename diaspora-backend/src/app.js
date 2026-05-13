@@ -7,6 +7,8 @@ const projetRoutes = require("./routes/projetRoutes");
 const partenaireRoutes = require("./routes/partenaireRoutes");
 const financementRoutes = require("./routes/financementRoutes");
 const exportRoutes = require("./routes/exportRoutes");
+const cotisationRoutes = require("./routes/cotisationRoutes");
+const depenseRoutes = require("./routes/depenseRoutes");
 
 const app = express();
 
@@ -27,11 +29,13 @@ app.use("/api/projets", projetRoutes);
 app.use("/api/partenaires", partenaireRoutes);
 app.use("/api/financements", financementRoutes);
 app.use("/api/export", exportRoutes);
+app.use("/api/cotisations", cotisationRoutes);
+app.use("/api/depenses", depenseRoutes);
 
 // Route de test
 app.get("/", (req, res) => {
   res.json({
-    message: "DiasporaConnect API fonctionne !",
+    message: "DAS_connect API fonctionne !",
     version: "1.0.0",
   });
 });

@@ -6,6 +6,8 @@ import Projets from './pages/Projets';
 import Partenaires from './pages/Partenaires';
 import Financements from './pages/Financements';
 import Utilisateurs from './pages/Utilisateurs';
+import Cotisations from './pages/Cotisations';
+import Depenses from './pages/Depenses';
 import Layout from './components/Layout';
 
 const ProtectedRoute = ({ children }) => {
@@ -25,6 +27,8 @@ function App() {
           <Route path="/partenaires" element={<ProtectedRoute><Partenaires /></ProtectedRoute>} />
           <Route path="/financements" element={<ProtectedRoute><Financements /></ProtectedRoute>} />
           <Route path="/utilisateurs" element={<ProtectedRoute><Utilisateurs /></ProtectedRoute>} />
+          <Route path="/cotisations" element={<ProtectedRoute><Cotisations /></ProtectedRoute>} />
+          <Route path="/depenses" element={<ProtectedRoute><Depenses /></ProtectedRoute>} />
           <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
       </BrowserRouter>
